@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>The GeoGebra Journey</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <style type="text/css">
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+	  body .remark-slide-content{
+		font-size: 24px;
+	  }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# From Java to JavaScript: The Journey of GeoGebra Graphing Calculator
+Zbynek Konecny (@zbynek_geogebra)
+![](img/phi.gif)
+---
+
+# About GeoGebra
+
+- Dynamic mathematics software
+- Free for non-commercial purposes
+- Available as desktop app, in browser, native mobile apps
+- Online platform for sharing resources
+- team of 15 developers with HQ in Linz
+- 60 languages
+
+
+![](img/platforms.png)
+---
+# Demo
+<iframe scrolling="no" title="FullGUI" src="https://www.geogebra.org/material/iframe/id/pe4EFPsD/width/600/height/400/border/888888/smb/false/stb/true/stbh/false/ai/true/asb/false/sri/true/rc/true/ld/false/sdz/true/ctl/false" width="600px" height="400px" style="border:0px;"> </iframe>
+---
+# History
+
+**Version 1.0 (2002)** 
+- by Markus Hohenwarter (master thesis, University of Salzburg)
+- Java (Swing)
+- dynamic geometry
+- English and German
+
+**Version 2.0 (2004)**
+- functions and derivatives
+- online applets (18k applets shared on geogebra.org) 
+
+**...**
+---
+# The Death of Java
+- 2008: SVG based dynamic geometry JSXGraph
+- 2010: release of iPad, no Java apps
+- 2011: Chrome, FF incrementaly moving away from NPAPI
+- 2014: Chrome removes Java by default
+
+---
+
+**Version 4.4 (2013)**
+- HTML5 replaces Java Applets
+
+**Version 5.0 (2014)**
+- 3D graphics (OpenGL / WebGL)
+
+**Version 6.0 (2017)**
+- JS used also for desktop
+- native UIs using the same engine
+
+---
+# Common codebase
+- Goal: keep Java on desktop, JS in browser, use single codebase
+- Project "geogebra" -> "common", "desktop", "web"
+- Common code must be GWT compatible
+ - No clone()
+ - No AWT (graphics)
+ - No threads
+ - No filesystem
+- Sometimes GWT and JVM behave differently
+ - GWT method declares to return int, returns double
+ - no ClassCastException thrown in GWT
+---
+#Porting AWT graphics packages 
+
+JVM
+```java
+@Override
+public GComposite getComposite() {
+	return new GCompositeD(impl.getComposite());
+}
+@Override
+public void setComposite(GComposite comp) {
+	impl.setComposite(GCompositeD.getAwtComposite(comp));
+}
+```
+GWT
+```java
+@Override
+public GComposite getComposite() {
+	return new GAlphaCompositeW(context.getGlobalAlpha());
+}
+	
+@Override
+public void setComposite(GComposite comp) {
+	context.setGlobalAlpha(((GAlphaCompositeW) comp).getAlpha());
+}
+```
+---
+Sometimes Java is enough
+```java
+@Override
+public void fillRect(int x, int y, int w, int h) {
+	context.fillRect(x, y, w, h);
+}
+```
+Sometimes JSNI is needed
+```java
+@Override
+public void setImageInterpolation(boolean b) {
+	setImageInterpolationNative(canvas.getContext2d(), b);
+}
+
+private native void setImageInterpolationNative(Context2d ctx, boolean b) /*-{
+	ctx['imageSmoothingEnabled'] = b;
+	ctx['mozImageSmoothingEnabled'] = b;
+	// IE11+ only
+	ctx['msImageSmoothingEnabled'] = b;
+	ctx['oImageSmoothingEnabled'] = b;
+}-*/;
+```
+---
+#SASS Resources
+- bundles of resource methods
+```java
+@Source("org/geogebra/web/resources/scss/menu-styles.scss")
+SassResource menuStyleScss();
+```
+- resource type must define generator
+```java
+@DefaultExtensions(value = { ".scss" })
+@ResourceGeneratorType(SassResourceGenerator.class)
+public interface SassResource extends TextResource {
+	String getText();
+}
+```
+---
+```java
+public final String createAssignment(TreeLogger logger,
+	ResourceContext context,
+	JMethod method) throws UnableToCompleteException {
+	URL[] resources = ResourceGeneratorUtil.findResources(logger, context, method);
+	String css = Util.readURLAsString(resources[0]);			
+			
+	Output output = new io.bit3.jsass.Compiler().compileString(css,
+				inputFile, outputFile, options);
+	output.getCss();
+	SourceWriter sw = new StringSourceWriter();
+	sw.println("new SassResource() {");
+	sw.println("  private String css=\"" + Generator.escape(css) + "\";");
+	sw.println("  @Override");
+	sw.println("  public String getText() {");
+	sw.println("    return css;");
+	sw.println("  }");
+	sw.println("}");
+	return sw.toString();
+}
+```
+---
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<module rename-to='html5'>
+  <inherits name="com.google.gwt.resources.Resources" />
+  <inherits name="com.google.gwt.http.HTTP"/>
+  <inherits name='com.google.gwt.user.User'/> 
+  <inherits name="com.google.gwt.json.JSON" />
+  <inherits name='org.geogebra.Common'/>
+  <inherits name='org.geogebra.GgbJdk'/>
+  <inherits name='org.geogebra.web.AppCacheLinker' />  
+  <inherits name="com.himamis.retex.editor.JLMEditorDev" />
+  
+  <!-- Specify the paths for translatable code                    -->
+  <source path='html5'/>
+  <source path='resources'/>
+  <!-- resources is both in source and resource bacause of SVGResource, SassResource classes -->
+  <resource path='resources'/>
+  <resource path='pub/js'/>
+  <resource path='exam'/>
+  <super-source path='html5-super' />
+    
+  <!-- #3511 -->
+  <set-property name="compiler.stackMode" value="strip"/>
+  
+  <replace-with class="org.geogebra.web.html5.util.OfflineLoadingStrategy">
+    <when-type-is
+        class="com.google.gwt.core.client.impl.AsyncFragmentLoader.LoadingStrategy"/>
+  </replace-with>
+
+</module>
+```
+---
+#GWT widgets
+- possible to write GUI fully in Java
+- abstraction layer above elements
+- FlowPanel ~ div
+- HorizontalPanel, VerticalPanel ~ table
+- many more (Tree, DockPanel, ScrollPanel, ...)
+---
+# Used stack
+- build system: gradle
+- parser compiler: JavaCC
+- CSS preprocessor: SASS
+- static analysis: pmd, findbugs
+- zip.js
+---
+# Cons
+- emulation slows things down (improved: native Maps with GWT 2.8)
+- hard to split code (GWT.runAsync)
+- uncertain future (GWT 3.0?)
+
+# Pros
+- separation of logic and UI
+- strong types, java tooling (findbugs)
+- Super Dev Mode: incremental compile + source maps
+- common part of codebase runs on Android
+- iOS native app also viable using j2objc
+
+---
+# Thanks!
+(presentation powered by remark.js)
+    </textarea>
+	<script src="remark.js" type="text/javascript"></script>
+    
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js" type="text/javascript"></script>
+        </script>
+    <script type="text/javascript">
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
