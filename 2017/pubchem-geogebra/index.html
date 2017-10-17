@@ -6,7 +6,7 @@
 <body>
 <aside style="float:right;width:250px;margin-right:1em;"><p>This is a quick & dirty demo of pulling data from <a target="_blank" href="https://pubchem.ncbi.nlm.nih.gov/">PubChem</a>'s REST API into 
 <a  target="_blank" href="https://www.geogebra.org">GeoGebra</a> 3D applet.</p>
-<p>Type in the name of the compound and press enter. Use the angle tool to find the angle between single bonds.</p> Feedback welcome.
+<p>Type in the name of the compound and press enter. Use the angle tool to find the angle between single bonds.</p> <a href="https://twitter.com/zbynek_geogebra/status/920400652219580416" target="_blank">Feedback welcome</a>.
 </aside>
 <main style="margin:1em auto;max-width:602px;">
 <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
@@ -92,7 +92,7 @@ xhr.addEventListener("load",function(){
 xhr.send();
 }
 </script>
-<div id="container">
+<div id="container" style="display:inline-block">
 </div>
 <input name="compoundName" id="compoundName" onchange="renderCompound()" value="Sulphuric acid"/>
 <input name="showLabels" id="showLabels" type="checkbox" onchange="showHideLabels();"/><label for="showLabels">Show labels</label>
