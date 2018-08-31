@@ -1,0 +1,150 @@
+<html>
+<head>
+<title>AZ</title>
+</head>
+<style>
+body,html{
+padding:0;
+margin:0;
+font-family:'Segoe UI', sans-serif;
+}
+</style>
+<body>
+<canvas id="c" width="900" height="700">
+</canvas>
+<div style="z-index:10;left:20;top:20;position:absolute;font-size:40px;cursor:pointer;" id="bride">Petra<div class="sum"></div></div>
+<div style="z-index:10;right:20;top:20;position:absolute;font-size:40px;cursor:pointer;" id="groom">Martin<div class="sum"></div></div>
+<script>
+window.addEventListener("load",e=>{
+	var ctx = document.getElementById("c").getContext("2d");
+	var step = 0;
+	var guesses = {"bride":[], "groom":[]};
+	var player = "";
+	var grid = [];
+	var rewards = {"bride":[900, 600, 1200 ], "groom":[800, 1500, 2000]};
+	var running = true;
+	setInterval(e=>{step = running ? (step+1)%28 : step},330);
+	function hexa(x,y,r,color){
+		ctx.beginPath();
+		ctx.moveTo(x,y+r);
+		for(var i=1;i<6;i++){
+			ctx.lineTo(x+Math.sin(Math.PI/3*i)*r,y+Math.cos(Math.PI/3*i)*r);
+		}
+
+		ctx.closePath();
+		ctx.stroke();
+		ctx.fillStyle=color;
+		ctx.fill();
+	}
+
+	function label(text, x, y, r) {
+		ctx.fillStyle="rgba(255,255,255,1)";
+		var w = ctx.measureText(text).width;
+		ctx.fillText(text, x-.5*w, y+r*.1);
+	}
+
+	function paint(){
+		ctx.fillStyle="rgba(255,255,255,1)";
+		ctx.fillRect(0,0,10000,100000);
+		var r= window.innerHeight / 16;
+		if(guesses[player] && guesses[player].indexOf(step) >=0){
+			step = (step+1) % 28;
+		}
+		for(var i=0;player && i<8;i++){
+			for(var j=0;j<i;j++){
+				var current = i*(i-1)/2 +j;
+				var color = running && step == current ? "rgba(128,128,128,1)" : "rgba(200,200,200,1)";
+				var x = window.innerWidth*.5 +(j-0.5*i)*r*1.1*Math.sqrt(3);
+				var y = i*r*1.1*Math.sqrt(3);
+				var hit = guesses[player].indexOf(current);
+				if (hit >= 0) {
+					color="rgba(64,64,64)";
+					ctx.font="bold "+(.6*r)+"px 'Segoe UI',Calibri";
+					hexa(x, y,r, color);
+					label(rewards[player][hit], x, y, r);
+					
+				} else {
+					hexa(x, y,r, color);
+					if(guesses[player].length == 3){
+						label(grid[current], x, y, r);
+					}
+				}
+			}
+		}
+		requestAnimationFrame(paint);
+	}
+
+	requestAnimationFrame(paint);
+
+	window.addEventListener("keyup",e=>{
+		if(e.keyCode == 32){
+			if(running && guesses[player] && guesses[player].length < 3){
+				document.getElementById("tick").pause();
+				document.getElementById(guesses[player].length == 2 ? "tada" : "bell").play();
+				document.getElementById("tick").loop = false;
+				guesses[player].push(step);
+				sum = rewards[player].slice(0,guesses[player].length).reduce((a,b)=>a+b);
+				document.getElementById(player).getElementsByClassName("sum")[0].innerText = sum;
+				console.log(guesses);
+				running = false;
+				if(guesses[player].length < 3){
+					setTimeout(startRunning, 2000);					
+				} else {
+					updateGrid();
+				}
+				
+			}
+			
+		}
+	});
+
+	function updateGrid(){
+		var opposite = player == "groom" ? "bride" : "groom";
+		for(var i = 0; i<3; i++){
+			var idx = guesses[player][0];
+			var checks = 0;
+			while(guesses[player].indexOf(idx) >= 0 && checks < 100){
+				idx= Math.round(Math.random()*28);
+				checks++;
+			}
+			console.log(checks);
+			grid[idx] = rewards[opposite][i];
+		}
+	}
+	function resizeCanvas(){
+		document.getElementById("c").width=window.innerWidth;
+		document.getElementById("c").height=window.innerHeight;
+	}
+	
+	function startRunning(){
+		running=true;
+		document.getElementById("tick").loop = true;
+		document.getElementById("tick").play();
+	}
+	resizeCanvas();
+	window.addEventListener("resize",resizeCanvas);
+	["bride","groom"].every(id=>{
+		document.getElementById(id).addEventListener("click", e=> {
+			if(guesses[id].length){
+				return;
+			}		
+			for(var i = 0;i<28;i++){
+				//square the random number -> smaller average
+				grid[i] = Math.round(1+Math.random()*Math.random()*19)*100;
+			}
+			document.getElementById(id).style.color = "green";
+			player= id;
+			step=0;
+			startRunning();
+		});
+		return true;
+	});
+});
+</script>
+<audio id="tick" src="tick-tock-trim.mp3" loop="true"/>
+<audio id="bell" src="bell.mp3"/>
+<audio id="tada" src="tada.mp3"/>
+<div style="display:none">
+Used sounds: http://soundbible.com/1003-Ta-Da.html (Mike Koening), http://soundbible.com/1258-Tick-Tock.html (Mike Koenig), http://soundbible.com/2218-Service-Bell-Help.html (Daniel Simons)
+<div>
+</body>
