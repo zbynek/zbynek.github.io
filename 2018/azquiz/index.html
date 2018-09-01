@@ -50,13 +50,13 @@ window.addEventListener("load",e=>{
 		if(guesses[player] && guesses[player].indexOf(step) >=0){
 			step = (step+1) % 28;
 		}
-		for(var i=0;player && i<8;i++){
+		for(var i=0; i<8;i++){
 			for(var j=0;j<i;j++){
 				var current = i*(i-1)/2 +j;
 				var color = running && step == current ? "rgba(128,128,128,1)" : "rgba(200,200,200,1)";
 				var x = window.innerWidth*.5 +(j-0.5*i)*r*1.1*Math.sqrt(3);
 				var y = i*r*1.1*Math.sqrt(3);
-				var hit = guesses[player].indexOf(current);
+				var hit = !player ? -1 : guesses[player].indexOf(current);
 				if (hit >= 0) {
 					color="rgba(64,64,64)";
 					ctx.font="bold "+(.6*r)+"px 'Segoe UI',Calibri";
@@ -65,7 +65,7 @@ window.addEventListener("load",e=>{
 					
 				} else {
 					hexa(x, y,r, color);
-					if(guesses[player].length == 3){
+					if(player && guesses[player].length == 3){
 						label(grid[current], x, y, r);
 					}
 				}
